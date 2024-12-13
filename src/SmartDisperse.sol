@@ -4,6 +4,7 @@ pragma solidity ^0.8.25;
 import {IL2ToL2CrossDomainMessenger} from "@contracts-bedrock/L2/interfaces/IL2ToL2CrossDomainMessenger.sol";
 import {ISuperchainERC20} from "optimism/packages/contracts-bedrock/src/L2/interfaces/ISuperchainERC20.sol";
 import {Predeploys} from "@contracts-bedrock/libraries/Predeploys.sol";
+import {ISuperchainTokenBridge} from "optimism/packages/contracts-bedrock/src/L2/interfaces/ISuperchainTokenBridge.sol";
 
 error CallerNotL2ToL2CrossDomainMessenger();
 error InvalidCrossDomainSender();
@@ -62,12 +63,21 @@ contract SmartDisperse {
             totalAmount: totalAmount
         });
 
-        // Send message to destination chain
-        messenger.sendMessage(
-            _toChainId,
+        // // Send message to destination chain
+        // messenger.sendMessage(
+        //     _toChainId,
+        //     address(this),
+        //     abi.encodeCall(this.receiveTokens, (message))
+        // );
+
+        ISuperchainTokenBridge(Predeploys.SUPERCHAIN_TOKEN_BRIDGE).sendERC20(
+            Predeploys.SUPERCHAIN_WETH,
             address(this),
-            abi.encodeCall(this.receiveTokens, (message))
+            totalAmount,
+            _toChainId
         );
+
+
 
         emit TokensSent(block.chainid, _toChainId, totalAmount);
     }
@@ -79,7 +89,6 @@ contract SmartDisperse {
      */
     function receiveTokens(TransferMessage memory _message) external onlyCrossDomainCallback {
         uint256 verifyTotal = 0;
-        
         // Distribute tokens to all recipients
         for (uint256 i = 0; i < _message.recipients.length; i++) {
             verifyTotal += _message.amounts[i];
@@ -87,8 +96,8 @@ contract SmartDisperse {
             if (!success) revert TransferFailed();
         }
 
-        // Verify total amount matches
-        if (verifyTotal != _message.totalAmount) revert InvalidAmount();
+        // // Verify total amount matches
+        // if (verifyTotal != _message.totalAmount) revert InvalidAmount();
 
         emit TokensReceived(
             messenger.crossDomainMessageSource(),
