@@ -82,7 +82,7 @@ contract SmartDisperse {
             address(this),
             abi.encodeCall(this.receiveTokens, (message))
         );
-        
+
         emit TokensSent(block.chainid, _toChainId, totalAmount);
     }
 
@@ -99,9 +99,6 @@ contract SmartDisperse {
             bool success = ISuperchainERC20(_message.tokenAddress).transfer(_message.recipients[i], _message.amounts[i]);
             if (!success) revert TransferFailed();
         }
-
-        // require(verifyTotal <= address(this).balance, "Insufficient WETH minted");
-
 
         // Verify total amount matches
         if (verifyTotal != _message.totalAmount) revert InvalidAmount();
