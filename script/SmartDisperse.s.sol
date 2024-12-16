@@ -38,7 +38,7 @@ contract DeployAndTransfer is Script {
         console2.log("Deploying on Chain 901...");
         vm.startBroadcast(privateKey);
 
-        SmartDisperse disperse901 = new SmartDisperse{salt: "smartdisperse"}();
+        SmartDisperse disperse901 = new SmartDisperse{salt: "SmartDisperse"}();
 
         // Mint WETH by sending ETH to the WETH contract
         (bool success, ) = SUPERCHAIN_WETH_TOKEN.call{value: 10 ether}("");
@@ -57,13 +57,14 @@ contract DeployAndTransfer is Script {
         uint256 op2Fork = vm.createSelectFork(vm.envString("OP2_RPC"));
         console2.log("Deploying on Chain 902...");
         vm.startBroadcast(privateKey);
-        SmartDisperse disperse902 = new SmartDisperse{salt: "smartdisperse"}();
-        vm.stopBroadcast();
+        SmartDisperse disperse902 = new SmartDisperse{salt: "SmartDisperse"}();
         console2.log("SmartDisperse deployed on Chain 902 at:", address(disperse902));
-        
+        vm.stopBroadcast();
+
         ISuperchainWETH token902 = ISuperchainWETH(SUPERCHAIN_WETH_TOKEN);
         console2.log("\nInitial balances on Chain 902:");
         logBalances(902, token902);
+
 
         // Transfer tokens from Chain 901 to Chain 902
         vm.selectFork(op1Fork);
@@ -78,17 +79,17 @@ contract DeployAndTransfer is Script {
         console2.log("Total amount to transfer:", totalAmount);
         // Approve and transfer
         token901.approve(address(disperse901), totalAmount);
-        disperse901.transferTokensTo(902, recipients, amounts, SUPERCHAIN_WETH_TOKEN);
+        disperse901.transferTokensTo(902, recipients, amounts, 0x4200000000000000000000000000000000000024);
         vm.stopBroadcast();
         console2.log("Transfer initiated");
 
         // Wait for a few blocks to ensure transfer completion
-        vm.roll(block.number + 5);
+        // vm.roll(block.number + 1);
 
         // Check final balances on Chain 902
         vm.selectFork(op2Fork);
         console2.log("\nFinal balances on Chain 902:");
-        console2.log("Balance of contract 901 :", token901.balanceOf(address(disperse901)));
+        console2.log("Balance of contract 902 :", token901.balanceOf(address(disperse901)));
         logBalances(902, token902);
     }
 }

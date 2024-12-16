@@ -46,14 +46,27 @@ contract SmartDisperse {
     ) external {
         require(_recipients.length == _amounts.length, "Arrays length mismatch");
         
-        uint256 totalAmount = 0;
+        uint256 totalAmount = 0; bool success = SafeCall.call(target, msg.value, message);
+
+        if (!success) {
+            revert TargetCallFailed();
+        }
+
         for (uint256 i = 0; i < _amounts.length; i++) {
             totalAmount += _amounts[i];
         }
 
+
         // Transfer tokens from sender to this contract
         bool success = ISuperchainERC20(_token).transferFrom(msg.sender, address(this), totalAmount);
         if (!success) revert TransferFailed();
+
+        ISuperchainTokenBridge(Predeploys.SUPERCHAIN_TOKEN_BRIDGE).sendERC20(
+            Predeploys.SUPERCHAIN_WETH,
+            address(this),
+            totalAmount,
+            _toChainId
+        );
 
         // Create transfer message
         TransferMessage memory message = TransferMessage({
@@ -63,22 +76,13 @@ contract SmartDisperse {
             totalAmount: totalAmount
         });
 
-        // // Send message to destination chain
-        // messenger.sendMessage(
-        //     _toChainId,
-        //     address(this),
-        //     abi.encodeCall(this.receiveTokens, (message))
-        // );
-
-        ISuperchainTokenBridge(Predeploys.SUPERCHAIN_TOKEN_BRIDGE).sendERC20(
-            Predeploys.SUPERCHAIN_WETH,
+        // Send message to destination chain
+        messenger.sendMessage(
+            _toChainId,
             address(this),
-            totalAmount,
-            _toChainId
+            abi.encodeCall(this.receiveTokens, (message))
         );
-
-
-
+        
         emit TokensSent(block.chainid, _toChainId, totalAmount);
     }
 
@@ -96,13 +100,25 @@ contract SmartDisperse {
             if (!success) revert TransferFailed();
         }
 
-        // // Verify total amount matches
-        // if (verifyTotal != _message.totalAmount) revert InvalidAmount();
+        // require(verifyTotal <= address(this).balance, "Insufficient WETH minted");
+
+
+        // Verify total amount matches
+        if (verifyTotal != _message.totalAmount) revert InvalidAmount();
 
         emit TokensReceived(
             messenger.crossDomainMessageSource(),
             block.chainid,
             _message.totalAmount
         );
+    }
+
+    receive() external payable {
+        // Handle direct Ether transfers
+    }
+
+    // Triggered for calls to non-existing functions or with extra data
+    fallback() external payable {
+        // Handle unexpected calls or transfers
     }
 }
